@@ -37,7 +37,7 @@ class HidIntf:
 
     def loop_write(
         self,
-        count: int = 100,
+        count: int = 1,
         byte_count: int = 64,
         write_interval: float = 0.00,
         generator: Any = None,
@@ -54,7 +54,8 @@ class HidIntf:
                     if isinstance(generator, Callable):
                         words = generator(byte_count)
                     else:
-                        words = [random.randint(0, 255) for _ in range(byte_count)]
+                        # words = [random.randint(0, 255) for _ in range(byte_count)]
+                        words = [x % 256 for x in range(byte_count)]
 
             # Pad with zeros if words are not multiple of 64 bytes
             if write_padding:
@@ -63,16 +64,15 @@ class HidIntf:
                 padding_count = 64 - remainder if remainder else 0
                 words += [0] * padding_count
 
-            # FIRST BYTE IS NOT ZERO
-            # __import__('pdb').set_trace()
-            if words[0] == 0:
-                words[0] = 0xFF
+            # FIRST BYTE IS ZERO work-around to accommodate hidapi's hid_write()
+            # Prepend a zero byte if words[0]==0
+            new_words = [0] + words if words[0] == 0 else [] + words
 
             if verbose:
                 print(f"WR:", end=" ")
-                self.print_hexified_buffer(words)
-            self.h.write(words)
-            self.write_bytecount += len(words)
+                self.print_hexified_buffer(new_words)
+            self.h.write(new_words)
+            self.write_bytecount += len(new_words)
 
             if write_interval > 0.0:
                 sleep(write_interval)
